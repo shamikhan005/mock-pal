@@ -1,6 +1,6 @@
 # mockpal
 
-## ⚡ Quickstart (Local Setup in 5 Commands)
+## Quickstart (Local Setup in 5 Commands)
 
 ```bash
 # 1. Install dependencies
@@ -22,7 +22,7 @@ ngrok http 3000
 
 ---
 
-## 🛠️ Environment Variables
+## Environment Variables
 
 Copy `.env.local.example` to `.env.local` and configure the following variables:
 
@@ -45,14 +45,16 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"  # Set to your ngrok forwarding addr
 
 ---
 
-## 🏗️ Architecture & Core Loop
+## Architecture & Core Loop
 
+<img width="966" height="607" alt="Screenshot 2026-07-01 113311" src="https://github.com/user-attachments/assets/36695b82-8101-4d41-87fd-699b3a1c4b4c" />
 
-
-### 🧠 State Machine Conversation Engine
+### State Machine Conversation Engine
 The platform implements a **5-Stage State Machine** (`intro` → `question` → `followup` → `probe` → `close`) managed directly via server-side session stores and custom prompts:
 - **Intro**: Establishes context and greets the candidate.
 - **Question**: Selects random contextual topics tailored to role/experience.
 - **Followup**: Evaluates the candidate's answer structure. Re-routes if responses lack STAR structure or results.
 - **Probe**: Pushes back on vague, short, or generic responses.
 - **Close**: Wraps up the conversation and triggers automated scoring.
+
+<img width="1297" height="827" alt="Screenshot 2026-06-29 195302" src="https://github.com/user-attachments/assets/6cb8d05f-3db8-4a05-bf18-eb7d85790072" />
