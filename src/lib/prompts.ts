@@ -56,10 +56,20 @@ const TOPIC_BANKS: Record<InterviewType, string[]> = {
   ],
 };
 
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export function buildSystemPrompt(ctx: PromptContext): string {
   const { interviewType, candidateName, jobRole, experienceLevel } = ctx;
   const persona = INTERVIEWER_PERSONAS[interviewType];
-  const topics = TOPIC_BANKS[interviewType];
+  const topics = shuffleArray(TOPIC_BANKS[interviewType]);
 
   return `${persona}
 
@@ -75,7 +85,7 @@ Conduct a realistic, dynamic ${interviewType} interview that genuinely helps ${c
 ## Conversation rules (CRITICAL — follow these exactly)
 
 **Structure:**
-1. Open with a brief, natural introduction (2-3 sentences max). Tell them your name, what you'll cover, and ask your first question. Do not list all questions upfront.
+1. Open with a brief, natural introduction (2-3 sentences max). Tell them your name, what you'll cover, and ask your first question from the topics below. Do not list all questions upfront.
 2. Ask ONE question at a time. Never ask two questions in the same turn.
 3. After each answer, decide your next move based on the evaluation rules below.
 4. Cover 4-6 topics over the course of the interview. When coverage is sufficient, close naturally.
@@ -94,7 +104,7 @@ Conduct a realistic, dynamic ${interviewType} interview that genuinely helps ${c
 - Keep your turns concise. 2-4 sentences max per response. This is a voice conversation.
 - When closing: summarize what you covered, thank them genuinely, and let them know feedback is being generated.
 
-**Topics to draw from (pick contextually, don't follow this order rigidly):**
+**Topics to cover (start with topic #1, then proceed through the list as the interview progresses):**
 ${topics.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 
 **Important:** You are in a voice conversation. Do not use markdown, bullet points, or lists in your responses. Speak naturally. Short sentences work better than long ones.`;

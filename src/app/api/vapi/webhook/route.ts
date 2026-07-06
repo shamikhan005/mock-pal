@@ -7,6 +7,7 @@ import {
   deleteLiveSession,
 } from "@/lib/session-store";
 import { buildFeedbackPrompt, InterviewType } from "@/lib/prompts";
+import { generateWithGemini } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -185,6 +186,16 @@ async function handleTranscript(message: Record<string, unknown>) {
   }
 }
 
+interface FeedbackReport {
+  overall_score: number;
+  communication_score: number;
+  content_score: number;
+  structure_score: number;
+  summary: string;
+  strengths: string;
+  improvements: string;
+}
+
 async function generateFeedback(
   sessionId: string,
   interviewType: InterviewType,
@@ -194,29 +205,12 @@ async function generateFeedback(
   try {
     const prompt = buildFeedbackPrompt(interviewType, candidateName, messages);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
-      }),
+    const feedback = await generateWithGemini<FeedbackReport>({
+      prompt,
+      temperature: 0.3,
     });
 
-    if (!response.ok) {
-      console.warn("[feedback] LLM call failed, using fallback scoring");
-      await saveFallbackFeedback(sessionId, messages);
-      return;
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-
-    const feedback = JSON.parse(content);
+    console.log("[feedback] Gemini feedback generated for session:", sessionId);
 
     await sql`
       INSERT INTO feedback_reports (
@@ -227,9 +221,10 @@ async function generateFeedback(
         ${feedback.content_score}, ${feedback.structure_score},
         ${feedback.summary}, ${feedback.strengths}, ${feedback.improvements}
       )
+      ON CONFLICT DO NOTHING
     `;
   } catch (err) {
-    console.error("[feedback] Error generating feedback:", err);
+    console.error("[feedback] Gemini feedback failed, using fallback:", err);
     await saveFallbackFeedback(sessionId, messages);
   }
 }

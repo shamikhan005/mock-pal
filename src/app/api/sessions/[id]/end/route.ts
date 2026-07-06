@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { getVapiCall } from "@/lib/vapi";
 import { buildFeedbackPrompt, InterviewType } from "@/lib/prompts";
+import { generateWithGemini } from "@/lib/gemini";
 
 export async function POST(
   _req: NextRequest,
@@ -98,29 +99,29 @@ export async function POST(
     if (messages.length > 2) {
       try {
         const prompt = buildFeedbackPrompt(dbSession.interview_type as InterviewType, candidateName, messages);
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.3,
-          }),
+
+        interface FeedbackReport {
+          overall_score: number;
+          communication_score: number;
+          content_score: number;
+          structure_score: number;
+          summary: string;
+          strengths: string;
+          improvements: string;
+        }
+
+        const feedback = await generateWithGemini<FeedbackReport>({
+          prompt,
+          temperature: 0.3,
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          const content = data.choices[0].message.content;
-          const feedback = JSON.parse(content);
+        console.log("[end-session] Gemini feedback generated for:", dbSession.id);
 
-          const existingFeedback = await sql`
+        const existingFeedback = await sql`
             SELECT id FROM feedback_reports WHERE session_id = ${dbSession.id}
           `;
-          if (existingFeedback.length === 0) {
-            await sql`
+        if (existingFeedback.length === 0) {
+          await sql`
               INSERT INTO feedback_reports (
                 session_id, overall_score, communication_score, content_score,
                 structure_score, summary, strengths, improvements
@@ -130,12 +131,9 @@ export async function POST(
                 ${feedback.summary}, ${feedback.strengths}, ${feedback.improvements}
               )
             `;
-          }
-        } else {
-          await saveFallbackFeedback(dbSession.id, messages);
         }
       } catch (err) {
-        console.error("[end-session-route] Feedback generation error:", err);
+        console.error("[end-session] Gemini feedback failed, using fallback:", err);
         await saveFallbackFeedback(dbSession.id, messages);
       }
     } else {

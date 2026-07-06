@@ -52,4 +52,12 @@ export async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+
+  // Ensure unique constraints for safe ON CONFLICT clauses
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_transcripts_session_id ON transcripts(session_id)
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_reports_session_id ON feedback_reports(session_id)
+  `;
 }
